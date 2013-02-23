@@ -5,6 +5,16 @@ $(document).ready(function() {
 	return false;
     });
 
+    $("#msgform").on("keypress", function(e) {
+	if (e.keyCode == 13) {
+	    newMessage($(this));
+	    return false;
+	}
+	return true;
+    });
+
+    $("#message").select();
+
     updater.poll();
 });
 
@@ -53,13 +63,17 @@ function newMessage(form) {
     var msg = form.formToDict();
     var disabled = form.find("input[type=submit]");
     disabled.disable();
+    console.log("in newMessage");
 
     $.postJSON("/update", msg, function(response) {
         if (msg.id) {
+	    form.parent().remove();
+	    console.log("in newMessage msg.id");
         }
         else {
-
+	    form.find("input[type=text]").val("").select();
 	    disabled.enable();
+	    console.log("val");
         }
     });
 }
