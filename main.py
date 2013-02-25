@@ -6,6 +6,7 @@ import tornado.ioloop
 import os
 import logging
 import uuid
+from pprint import pprint
 
 
 logger = logging.getLogger()
@@ -22,30 +23,43 @@ class TimeMixin(object):
     count = 0
     cache = []
 
-    def register(self, observer):
+    def register(self, callback, cursor=None):
+        print "cursor: ", cursor
         cls = TimeMixin
-        cls.observers.append(observer)
+        if cursor:
+            index = 0
+            for i in xrange(len(cls.cache)):
+                index = len(cls.cache) - i - 1
+                if cls.cache[index]["id"] == cursor: break
+            recent = cls.cache[index + 1:]
+            if recent:
+                callback(recent)
+                return
+        cls.observers.append(callback)
 
-    def unregister(self, observer):
+    def unregister(self, callback):
         cls = TimeMixin
-        cls.observers.remove(observer)
+        cls.observers.remove(callback)
 
     def alert(self, message):
         cls = TimeMixin
-        cls.cache.append(message)
+        cls.cache.extend(message)
+        pprint(cls.cache)
         cls.count += 1
         obs = cls.observers
         cls.observers = []
-        for ob in obs:
-            ob(message)
+        for cb in obs:
+            cb(message)
         print "----- Observer Len: %d -----" % len(obs)
 
 
 class TimeHandler(tornado.web.RequestHandler, TimeMixin):
     @tornado.web.asynchronous
     def post(self):
+        cursor = self.get_argument("cursor", None)
         print "----- register: %d -----" % id(self)
-        self.register(self.onMsg)
+        self.register(self.onMsg,
+                      cursor=cursor)
 
     def onMsg(self, msg):
         if self.request.connection.stream.closed():

@@ -66,6 +66,7 @@ function newMessage(form) {
     console.log("in newMessage");
 
     $.postJSON("/update", msg, function(response) {
+	console.log(msg);
         if (msg.id) {
 	    form.parent().remove();
 	    console.log("in newMessage msg.id");
@@ -80,10 +81,17 @@ function newMessage(form) {
 
 
 var updater = {
+    cursor: null,
+    errorSleepTime: 500,
+
     poll: function () {
+	var args = {};
+	if (updater.cursor)
+	    args.cursor = updater.cursor;
 	$.ajax({url: "/time",
 		type: "POST",
 		dataType: "text",
+		data: $.param(args),
 		success: updater.onSuccess,
 		error: updater.onError,
 	       });
@@ -92,14 +100,21 @@ var updater = {
     onSuccess: function(response) {
         var r = eval("(" + response + ")");
         var messages = r.messages;
-	$("#msg").append(messages[messages.length - 1].html);
+	updater.cursor = messages[messages.length - 1].id;
+	console.log(messages.length, "new msgs, cursor: ", updater.cursor);
 
+	for (var i = 0; i < messages.length; i++) {
+	    $("#msg").append(messages[i].html);
+	}
+
+	updater.errorSleepTime = 500;
 	window.setTimeout(updater.poll, 0);
     },
 
     onError: function(response) {
+	updater.errorSleepTime *= 2;
 	$("#error")[0].innerHTML = "[ " + response + " ]" + "<br/>";
-	window.setTimeout(updater.poll, 500);
+	window.setTimeout(updater.poll, updater.errorSleepTime);
     },
 
 };
